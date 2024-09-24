@@ -2,7 +2,7 @@ import { buffer } from 'micro';
 import Stripe from 'stripe';
 import nodemailer from 'nodemailer';
 import QRCode from 'qrcode';
-import { db } from '../../firebaseConfig'; // Firebase config
+import { db } from '@/firebaseConfig'; // Firebase config
 import { doc, getDoc } from 'firebase/firestore';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
