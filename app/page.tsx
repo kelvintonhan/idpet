@@ -1,101 +1,173 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { db, storage } from "./firebaseConfig"; // Firebase config
+import { collection, addDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { v4 as uuidv4 } from "uuid"; // Biblioteca para gerar IDs únicos
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [formData, setFormData] = useState({
+    nome: "",
+    email: "",
+    dataNascimento: "",
+    texto: "",
+    imagem: null,
+    imagemPreview: null,
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setFormData({
+      ...formData,
+      imagem: file,
+      imagemPreview: URL.createObjectURL(file), // Atualiza o preview da imagem
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      // Gerar um ID único para o campo "id"
+      const uniqueId = uuidv4();
+
+      // Referência para salvar a imagem no Firebase Storage
+      const imageRef = ref(storage, `images/${formData.imagem.name}`);
+
+      // Faz o upload da imagem
+      const snapshot = await uploadBytes(imageRef, formData.imagem);
+
+      // Obtém a URL de download da imagem
+      const imageUrl = await getDownloadURL(snapshot.ref);
+
+      // Salva os dados no Firestore com um campo "id"
+      await addDoc(collection(db, "formularios"), {
+        nome: formData.nome,
+        email: formData.email,
+        dataNascimento: formData.dataNascimento,
+        texto: formData.texto,
+        imagemUrl: imageUrl,
+        id: uniqueId, // Adiciona o ID único gerado ao documento
+      });
+
+      // Gera a URL única com base no ID
+      const uniqueUrl = `${window.location.origin}/${uniqueId}`;
+
+      // Faz a requisição ao backend para enviar o email com o QR code
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          uniqueUrl: uniqueUrl,
+          nome: formData.nome,
+        }),
+      });
+
+      // Redirecionar o usuário para o Stripe
+      window.location.href = 'https://buy.stripe.com/test_fZeeWI5QQ0tR0daeUU'; // Use seu link de produto do Stripe
+    } catch (error) {
+      console.error("Erro ao processar o pagamento:", error);
+      alert("Erro ao processar o pagamento!");
+    }
+  };
+
+  return (
+    <div style={{ display: "flex" }}>
+      {/* Formulário */}
+      <div style={{ flex: 1 }}>
+        <h1>Opa</h1>
+        <form onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="nome">Nome:</label>
+            <input
+              type="text"
+              id="nome"
+              name="nome"
+              value={formData.nome}
+              onChange={handleChange}
+              required
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          </div>
+
+          <div>
+            <label htmlFor="email">Email:</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="dataNascimento">Data de Nascimento:</label>
+            <input
+              type="date"
+              id="dataNascimento"
+              name="dataNascimento"
+              value={formData.dataNascimento}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="texto">Texto:</label>
+            <textarea
+              id="texto"
+              name="texto"
+              value={formData.texto}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="imagem">Enviar Imagem:</label>
+            <input
+              type="file"
+              id="imagem"
+              name="imagem"
+              accept="image/*"
+              onChange={handleImageChange}
+              required
+            />
+          </div>
+
+          <button type="submit">Enviar</button>
+        </form>
+      </div>
+
+      {/* Pré-visualização */}
+      <div style={{ flex: 1, marginLeft: "20px", padding: "10px", border: "1px solid #ccc" }}>
+        {/* Exibe a imagem abaixo do título Pré-visualização se houver uma imagem anexada */}
+        {formData.imagemPreview && (
+          <div>
+            <img
+              src={formData.imagemPreview}
+              alt="Pré-visualização da imagem anexada"
+              style={{ maxWidth: "100%", height: "auto", marginTop: "10px" }}
+            />
+          </div>
+        )}
+        <p><strong>Nome:</strong> {formData.nome}</p>
+        <p><strong>Email:</strong> {formData.email}</p>
+        <p><strong>Data de Nascimento:</strong> {formData.dataNascimento}</p>
+        <p><strong>Texto:</strong> {formData.texto}</p>
+
+        
+      </div>
     </div>
   );
 }
