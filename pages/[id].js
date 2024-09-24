@@ -1,5 +1,6 @@
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../app/firebaseConfig"; // Firebase config
+import Image from 'next/image';
 
 export default function UserPage({ userData }) {
   if (!userData) {
@@ -13,7 +14,13 @@ export default function UserPage({ userData }) {
       <p><strong>Email:</strong> {userData.email}</p>
       <p><strong>Data de Nascimento:</strong> {userData.dataNascimento}</p>
       <p><strong>Texto:</strong> {userData.texto}</p>
-      <img src={userData.imagemUrl} alt="Imagem enviada" style={{ maxWidth: "300px" }} />
+      <Image
+        src={userData.imagemUrl}
+        alt="Imagem enviada"
+        width={300}
+        height={300}
+        layout="responsive"
+      />
     </div>
   );
 }

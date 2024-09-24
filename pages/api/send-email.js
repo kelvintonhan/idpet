@@ -35,7 +35,7 @@ async function sendEmailWithQRCode(email, url, nome) {
   }
 }
 
-export default async function handler(req, res) {
+const createCheckoutSession = async (req, res) => {
   if (req.method === 'POST') {
     const { email, uniqueUrl, nome } = req.body;
 
@@ -51,3 +51,5 @@ export default async function handler(req, res) {
     res.status(405).end('Método não permitido');
   }
 }
+
+export default createCheckoutSession;

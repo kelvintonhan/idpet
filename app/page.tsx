@@ -1,10 +1,11 @@
-"use client";
+"use client"; // Adiciona isso no início do arquivo
 
 import { useState } from "react";
+import { v4 as uuidv4 } from "uuid"; // Biblioteca para gerar IDs únicos
 import { db, storage } from "./firebaseConfig"; // Firebase config
 import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { v4 as uuidv4 } from "uuid"; // Biblioteca para gerar IDs únicos
+import Image from 'next/image';
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -12,30 +13,38 @@ export default function Home() {
     email: "",
     dataNascimento: "",
     texto: "",
-    imagem: null,
-    imagemPreview: null,
+    imagem: null as File | null,
+    imagemPreview: null as string | null,
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    setFormData({
-      ...formData,
-      imagem: file,
-      imagemPreview: URL.createObjectURL(file), // Atualiza o preview da imagem
-    });
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setFormData({
+        ...formData,
+        imagem: file,
+        imagemPreview: URL.createObjectURL(file), // Atualiza o preview da imagem
+      });
+    }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
       // Gerar um ID único para o campo "id"
       const uniqueId = uuidv4();
+
+      // Verificar se a imagem está presente antes de tentar salvar
+      if (!formData.imagem) {
+        alert("Por favor, envie uma imagem.");
+        return;
+      }
 
       // Referência para salvar a imagem no Firebase Storage
       const imageRef = ref(storage, `images/${formData.imagem.name}`);
@@ -151,22 +160,24 @@ export default function Home() {
 
       {/* Pré-visualização */}
       <div style={{ flex: 1, marginLeft: "20px", padding: "10px", border: "1px solid #ccc" }}>
-        {/* Exibe a imagem abaixo do título Pré-visualização se houver uma imagem anexada */}
-        {formData.imagemPreview && (
-          <div>
-            <img
-              src={formData.imagemPreview}
-              alt="Pré-visualização da imagem anexada"
-              style={{ maxWidth: "100%", height: "auto", marginTop: "10px" }}
-            />
-          </div>
-        )}
+        <h2>Pré-visualização</h2>
         <p><strong>Nome:</strong> {formData.nome}</p>
         <p><strong>Email:</strong> {formData.email}</p>
         <p><strong>Data de Nascimento:</strong> {formData.dataNascimento}</p>
         <p><strong>Texto:</strong> {formData.texto}</p>
 
-        
+        {/* Exibe a imagem abaixo do título Pré-visualização se houver uma imagem anexada */}
+        {formData.imagemPreview && (
+        <div>
+          <Image
+            src={formData.imagemPreview}
+            alt="Pré-visualização da imagem anexada"
+            width={500} // Define a largura
+            height={500} // Define a altura
+            layout="responsive"
+          />
+        </div>
+        )}
       </div>
     </div>
   );

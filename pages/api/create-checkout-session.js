@@ -4,7 +4,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); // Use sua chave secre
 
 export default async (req, res) => {
   if (req.method === 'POST') {
-    const { id, nome, email, dataNascimento, texto, imagemUrl } = req.body;
+    const { id, nome, email } = req.body;
 
     try {
       // Crie uma sessão de checkout no Stripe
