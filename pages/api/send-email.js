@@ -1,55 +1,29 @@
 import nodemailer from 'nodemailer';
-import QRCode from 'qrcode';
 
-async function sendEmailWithQRCode(email, url, nome) {
+export const sendEmail = async ({ email, subject, text }) => {
   try {
+    // Configura o transportador de email usando as variáveis de ambiente
     const transporter = nodemailer.createTransport({
-      service: 'gmail', // Use Gmail ou outro serviço de email
+      service: 'gmail',
       auth: {
-        user: process.env.EMAIL_USER, // Seu email no arquivo .env
-        pass: process.env.EMAIL_PASS, // Senha de app do Gmail
-      },
+        user: process.env.EMAIL_USER, // Seu email
+        pass: process.env.EMAIL_PASS  // Sua senha de aplicativo (se estiver usando autenticação de dois fatores)
+      }
     });
 
-    // Gera o QR Code da URL do usuário
-    const qrCodeDataUrl = await QRCode.toDataURL(url);
-
+    // Opções de email
     const mailOptions = {
-      from: process.env.EMAIL_USER, // Verifique se este email está correto
-      to: email,
-      subject: 'Seu QR Code e Link',
-      html: `
-        <p>Olá ${nome},</p>
-        <p>Obrigado pelo pagamento! Aqui está o seu link e QR code:</p>
-        <p>Sua URL única: <a href="${url}">${url}</a></p>
-        <p>Escaneie o QR Code abaixo para acessar sua página:</p>
-        <img src="${qrCodeDataUrl}" alt="QR Code" />
-      `,
+      from: process.env.EMAIL_USER, // O email do remetente (você)
+      to: email,                    // O email do destinatário (usuário)
+      subject: subject,             // Assunto do email
+      text: text                    // Corpo do email
     };
 
+    // Envia o email
     await transporter.sendMail(mailOptions);
-    console.log('Email enviado com sucesso para:', email);
+    console.log('Email enviado com sucesso');
   } catch (error) {
     console.error('Erro ao enviar o email:', error);
     throw new Error('Erro ao enviar o email');
   }
-}
-
-const createCheckoutSession = async (req, res) => {
-  if (req.method === 'POST') {
-    const { email, uniqueUrl, nome } = req.body;
-
-    try {
-      await sendEmailWithQRCode(email, uniqueUrl, nome);
-      res.status(200).json({ message: 'QR code enviado com sucesso!' });
-    } catch (error) {
-      console.error('Erro no handler:', error);
-      res.status(500).json({ error: 'Erro ao enviar o email' });
-    }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end('Método não permitido');
-  }
-}
-
-export default createCheckoutSession;
+};
