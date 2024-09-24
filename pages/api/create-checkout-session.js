@@ -1,13 +1,14 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); // Use sua chave secreta do Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2020-08-27',
+});
 
-export default async (req, res) => {
+export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { id, nome, email } = req.body;
 
     try {
-      // Crie uma sessão de checkout no Stripe
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',
@@ -17,26 +18,25 @@ export default async (req, res) => {
               currency: 'usd',
               product_data: {
                 name: 'Pagamento Formulário',
-                description: `Pedido de ${nome}`,
+                description: `Pagamento para ${nome}`,
               },
               unit_amount: 5000, // Valor em centavos (5000 = $50.00)
             },
             quantity: 1,
           },
         ],
-        success_url: `${req.headers.origin}/${id}`, // URL de sucesso usando o ID único
+        success_url: `${req.headers.origin}/success`, // Página de sucesso após pagamento
         cancel_url: `${req.headers.origin}/cancel`,
         customer_email: email,
+        client_reference_id: id, // Aqui você está associando o ID do Firestore com a sessão de pagamento
       });
 
-      // Retorne o ID da sessão criada ao frontend
       res.status(200).json({ id: session.id });
-    } catch (err) {
-      console.error(err);
+    } catch {
       res.status(500).json({ error: 'Erro ao criar a sessão de pagamento' });
     }
   } else {
     res.setHeader('Allow', 'POST');
-    res.status(405).end('Method Not Allowed');
+    res.status(405).end('Método não permitido');
   }
-};
+}

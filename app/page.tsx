@@ -1,11 +1,18 @@
-"use client"; // Adiciona isso no início do arquivo
+"use client";
 
 import { useState } from "react";
-import { v4 as uuidv4 } from "uuid"; // Biblioteca para gerar IDs únicos
-import { db, storage } from "./firebaseConfig"; // Firebase config
+import { v4 as uuidv4 } from "uuid";
+import { db, storage } from "./firebaseConfig";
 import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { loadStripe } from '@stripe/stripe-js';
 import Image from 'next/image';
+
+if (!process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY) {
+  throw new Error('A chave pública do Stripe não está definida. Verifique suas variáveis de ambiente.');
+}
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY as string);
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -28,66 +35,66 @@ export default function Home() {
       setFormData({
         ...formData,
         imagem: file,
-        imagemPreview: URL.createObjectURL(file), // Atualiza o preview da imagem
+        imagemPreview: URL.createObjectURL(file),
       });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+  
     try {
-      // Gerar um ID único para o campo "id"
       const uniqueId = uuidv4();
-
-      // Verificar se a imagem está presente antes de tentar salvar
+  
       if (!formData.imagem) {
         alert("Por favor, envie uma imagem.");
         return;
       }
-
-      // Referência para salvar a imagem no Firebase Storage
+  
       const imageRef = ref(storage, `images/${formData.imagem.name}`);
-
-      // Faz o upload da imagem
       const snapshot = await uploadBytes(imageRef, formData.imagem);
-
-      // Obtém a URL de download da imagem
       const imageUrl = await getDownloadURL(snapshot.ref);
-
-      // Salva os dados no Firestore com um campo "id"
+  
       await addDoc(collection(db, "formularios"), {
         nome: formData.nome,
         email: formData.email,
         dataNascimento: formData.dataNascimento,
         texto: formData.texto,
         imagemUrl: imageUrl,
-        id: uniqueId, // Adiciona o ID único gerado ao documento
+        id: uniqueId,
       });
-
-      // Gera a URL única com base no ID
-      const uniqueUrl = `${window.location.origin}/${uniqueId}`;
-
-      // Faz a requisição ao backend para enviar o email com o QR code
-      await fetch('/api/send-email', {
+  
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
-          uniqueUrl: uniqueUrl,
+          id: uniqueId,
           nome: formData.nome,
+          email: formData.email,
         }),
       });
-
+  
+      const session = await response.json();
+  
       // Redirecionar o usuário para o Stripe
-      window.location.href = 'https://buy.stripe.com/test_fZeeWI5QQ0tR0daeUU'; // Use seu link de produto do Stripe
+      const stripe = await stripePromise;
+  
+      // Verificação de null para garantir que o Stripe foi carregado corretamente
+      if (!stripe) {
+        console.error("Stripe não foi inicializado corretamente.");
+        alert("Erro ao inicializar o Stripe.");
+        return;
+      }
+  
+      await stripe.redirectToCheckout({ sessionId: session.id });
     } catch (error) {
       console.error("Erro ao processar o pagamento:", error);
       alert("Erro ao processar o pagamento!");
     }
   };
+  
 
   return (
     <div style={{ display: "flex" }}>
